@@ -4,7 +4,35 @@ function addMem0Button() {
     const sendButton = document.querySelector('button[aria-label="Send Message"]');
     const screenshotButton = document.querySelector('button[aria-label="Capture screenshot"]');
 
+    function createPopup(container) {
+        const popup = document.createElement('div');
+        popup.className = 'mem0-popup';
+        popup.style.cssText = `
+            display: none;
+            position: absolute;
+            background-color: black;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 10000;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 11px;
+            white-space: nowrap;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        `;
+        container.appendChild(popup);
+        return popup;
+    }
+
     if (window.location.href.includes('claude.ai/new') && screenshotButton && !document.querySelector('#mem0-button')) {
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.position = 'relative';
+        buttonContainer.style.display = 'inline-block';
+
         const mem0Button = document.createElement('button');
         mem0Button.id = 'mem0-button';
         mem0Button.className = screenshotButton.className;
@@ -17,7 +45,11 @@ function addMem0Button() {
         mem0Icon.style.height = '16px';
 
         mem0Button.appendChild(mem0Icon);
-        mem0Button.addEventListener('click', handleMem0Click);
+        mem0Button.addEventListener('click', () => handleMem0Click(popup));
+
+        buttonContainer.appendChild(mem0Button);
+
+        const popup = createPopup(buttonContainer);
 
         const tooltip = document.createElement('div');
         tooltip.id = 'mem0-tooltip';
@@ -38,7 +70,6 @@ function addMem0Button() {
         document.body.appendChild(tooltip);
 
         mem0Button.addEventListener('mouseenter', (event) => {
-            console.log('Mouse entered Mem0 button');
             const rect = mem0Button.getBoundingClientRect();
             const buttonCenterX = rect.left + rect.width / 2;
             tooltip.style.left = `${buttonCenterX}px`;
@@ -47,13 +78,11 @@ function addMem0Button() {
         });
 
         mem0Button.addEventListener('mouseleave', () => {
-            console.log('Mouse left Mem0 button');
             tooltip.style.display = 'none';
         });
 
-        screenshotButton.parentNode.insertBefore(mem0Button, screenshotButton.nextSibling);
+        screenshotButton.parentNode.insertBefore(buttonContainer, screenshotButton.nextSibling);
     } else if (sendButton && !document.querySelector('#mem0-button')) {
-
         const buttonContainer = document.createElement('div');
         buttonContainer.style.position = 'relative';
         buttonContainer.style.display = 'inline-block';
@@ -61,15 +90,17 @@ function addMem0Button() {
         const mem0Button = document.createElement('img');
         mem0Button.id = 'mem0-button';
         mem0Button.src = chrome.runtime.getURL('icons/mem0-claude-icon.png');
-        mem0Button.style.width = '18px';
-        mem0Button.style.height = '18px';
+        mem0Button.style.width = '19px';
+        mem0Button.style.height = '19px';
         mem0Button.style.marginRight = '22px';
         mem0Button.style.cursor = 'pointer';
-        mem0Button.style.padding = '6px';
+        mem0Button.style.padding = '8px';
         mem0Button.style.borderRadius = '5px';
-        mem0Button.style.transition = 'background-color 0.3s ease, transform 0.2s ease';
+        mem0Button.style.transition = 'background-color 0.3s ease';
         mem0Button.style.boxSizing = 'content-box';
-        mem0Button.addEventListener('click', handleMem0Click);
+        mem0Button.addEventListener('click', () => handleMem0Click(popup));
+
+        const popup = createPopup(buttonContainer);
 
         mem0Button.addEventListener('mouseenter', () => {
             mem0Button.style.backgroundColor = 'rgba(0, 0, 0, 0.35)';
@@ -113,16 +144,16 @@ function addMem0Button() {
     }
 }
 
-async function handleMem0Click() {
+async function handleMem0Click(popup) {
     const inputElement = document.querySelector('div[contenteditable="true"]') || document.querySelector('textarea');
     const message = getInputValue();
     if (!message) {
         console.error('No input message found');
+        showPopup(popup, 'No input message found');
         return;
     }
 
     if (isProcessingMem0) {
-        console.log('Mem0 processing is already in progress');
         return;
     }
 
@@ -133,6 +164,13 @@ async function handleMem0Click() {
             const apiKey = data.apiKey;
             const userId = data.userId || 'claude-user';
 
+            if (!apiKey) {
+                showPopup(popup, 'No API Key found');
+                isProcessingMem0 = false;
+                return;
+            }
+
+            // Existing search API call
             const searchResponse = await fetch('https://api.mem0.ai/v1/memories/search/', {
                 method: 'POST',
                 headers: {
@@ -142,6 +180,7 @@ async function handleMem0Click() {
                 body: JSON.stringify({ query: message, user_id: userId, rerank: true, threshold: 0.1, limit: 10 })
             });
 
+            // New add memory API call (non-blocking)
             fetch('https://api.mem0.ai/v1/memories/', {
                 method: 'POST',
                 headers: {
@@ -207,18 +246,27 @@ async function handleMem0Click() {
                     }
 
                     inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+                } else {
+                    showPopup(popup, 'No memories found');
                 }
             } else {
-                console.log('Mem0 response:', responseData || 'No response received');
-                alert('Mem0 response received, but no input field found to update.');
+                showPopup(popup, 'No input field found to update');
             }
         });
     } catch (error) {
         console.error('Error:', error);
-        alert('Failed to send message to Mem0: ' + error.message);
+        showPopup(popup, 'Failed to send message to Mem0');
     } finally {
         isProcessingMem0 = false;
     }
+}
+
+function showPopup(popup, message) {
+    popup.textContent = message;
+    popup.style.display = 'block';
+    setTimeout(() => {
+        popup.style.display = 'none';
+    }, 1000);
 }
 
 function getInputValue() {
