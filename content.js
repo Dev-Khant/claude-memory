@@ -41,7 +41,7 @@ function addMem0Button() {
         tooltip.style.padding = '3px 6px';
         tooltip.style.position = 'absolute';
         tooltip.style.zIndex = '1';
-        tooltip.style.top = 'calc(100% + 11px)';
+        tooltip.style.top = 'calc(100% + 5px)';
         tooltip.style.left = '50%';
         tooltip.style.transform = 'translateX(-50%)';
         tooltip.style.whiteSpace = 'nowrap';
@@ -128,14 +128,14 @@ async function handleMem0Click() {
 
                     const memInfoRegex = /\s*<strong>Here is some more information about me:<\/strong>[\s\S]*$/;
                     currentContent = currentContent.replace(memInfoRegex, '').trim();
-                    if (currentContent.slice(-3) === '<p>') {
-                        currentContent = currentContent.slice(0, -3);
+                    const endIndex = currentContent.indexOf('</p>');
+                    if (endIndex !== -1) {
+                        currentContent = currentContent.slice(0, endIndex+4);
                     }
-                    console.log(currentContent);
 
                     const memoryWrapper = document.createElement('div');
                     memoryWrapper.id = "mem0-wrapper";
-                    memoryWrapper.style.backgroundColor = '#dcfce7';
+                    memoryWrapper.style.backgroundColor = 'rgb(220, 252, 231)';
                     memoryWrapper.style.padding = '8px';
                     memoryWrapper.style.borderRadius = '4px';
                     memoryWrapper.style.marginTop = '8px';
@@ -144,7 +144,6 @@ async function handleMem0Click() {
                     const titleElement = document.createElement('strong');
                     titleElement.textContent = 'Here is some more information about me:';
                     memoryWrapper.appendChild(titleElement);
-                    memoryWrapper.appendChild(document.createElement('br'));
 
                     memories.forEach(mem => {
                         const memoryItem = document.createElement('div');
@@ -155,9 +154,9 @@ async function handleMem0Click() {
                     const memoryTextWithStyle = memoryWrapper.outerHTML;
 
                     if (inputElement.tagName.toLowerCase() === 'div') {
-                        inputElement.innerHTML = currentContent + '<br><br>' + memoryTextWithStyle;
+                        inputElement.innerHTML = `${currentContent}<div><br></div>${memoryTextWithStyle}`;
                     } else {
-                        inputElement.value = currentContent + '\n\n' + memoryTextWithStyle;
+                        inputElement.value = `${currentContent}\n${memoryTextWithStyle}`;
                     }
 
                     inputElement.dispatchEvent(new Event('input', { bubbles: true }));
